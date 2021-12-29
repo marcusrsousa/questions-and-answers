@@ -13,12 +13,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: questions-and-answers-server:3
+    image: questions-and-answers-server:1.1
     depends_on:
       - database
-    networks:
-      - default
     ports:
-    - "8080:8080"
+      - "8080:8080"
 volumes:
   data:

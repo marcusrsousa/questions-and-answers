@@ -7,6 +7,7 @@ import (
 	"level7/questions-and-answers/repository"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 )
@@ -32,10 +33,18 @@ func initialMigration(db *gorm.DB) {
 	db.AutoMigrate(&model.Question{})
 }
 
+func getCors() []handlers.CORSOption {
+	header := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
+	origins := handlers.AllowedOrigins([]string{"*"})
+	return []handlers.CORSOption{header, methods, origins}
+}
+
 func main() {
 	db := connection.GetConnection()
 	initialMigration(db)
 	r := mux.NewRouter()
 	addRoutes(r, db)
-	http.ListenAndServe(":8080", r)
+
+	http.ListenAndServe(":8080", handlers.CORS(getCors()...)(r))
 }
