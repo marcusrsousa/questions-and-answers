@@ -1,15 +1,16 @@
-package question_controller_test
+package controller_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	question_controller "level7/questions-and-answers/controller"
+	"level7/questions-and-answers/controller"
 	"level7/questions-and-answers/model"
 	"level7/questions-and-answers/repository"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func TestAdd(t *testing.T) {
 	question := model.Question{
 		Statement: "what is the best ORM in goLang",
 		Answer:    "gORM is the best!",
-		UserName:  "Marcus",
+		User:      &model.User{ID: 1},
 	}
 
 	qc, mock, err := getQuestionController()
@@ -34,9 +35,9 @@ func TestAdd(t *testing.T) {
 	defer qc.Repository.Db.Close()
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "questions" ("statement","answer","user_name","created_at","updated_at","deleted_at") 
+	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "questions" ("statement","answer","user_id","created_at","updated_at","deleted_at") 
 			VALUES ($1,$2,$3,$4,$5,$6) RETURNING "questions"."id"`)).
-		WithArgs(question.Statement, question.Answer, question.UserName, sqlmock.AnyArg(), sqlmock.AnyArg(), nil).
+		WithArgs(question.Statement, question.Answer, question.User, sqlmock.AnyArg(), sqlmock.AnyArg(), nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(newId))
 	mock.ExpectCommit()
 
@@ -49,7 +50,7 @@ func TestAdd(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/question", &buf)
 	w := httptest.NewRecorder()
 
-	qc.Add(w, req)
+	qc.Add(w, req, *question.User)
 
 	result := w.Result()
 
@@ -59,7 +60,7 @@ func TestAdd(t *testing.T) {
 
 	json.NewDecoder(result.Body).Decode(&newQuestion)
 
-	if question.Statement != newQuestion.Statement || question.Answer != newQuestion.Answer || question.UserName != newQuestion.UserName || newId != newQuestion.ID {
+	if question.Statement != newQuestion.Statement || question.Answer != newQuestion.Answer || question.User.ID != newQuestion.User.ID || newId != newQuestion.ID {
 		t.Errorf("expected body: %v, got: %v", question, newQuestion)
 	}
 
@@ -74,7 +75,7 @@ func TestUpdate(t *testing.T) {
 		ID:        1,
 		Statement: "what is the best ORM in goLang",
 		Answer:    "gORM is the best!",
-		UserName:  "Marcus",
+		User:      &model.User{ID: 1},
 	}
 
 	qc, mock, err := getQuestionController()
@@ -85,10 +86,10 @@ func TestUpdate(t *testing.T) {
 	defer qc.Repository.Db.Close()
 
 	rows := sqlmock.
-		NewRows([]string{"id", "statement", "answer", "user_name", "created_at", "updated_at", "deleted_at"}).
-		AddRow(question.ID, question.Statement, question.Answer, question.UserName, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
+		NewRows([]string{"id", "statement", "answer", "user_id", "created_at", "updated_at", "deleted_at"}).
+		AddRow(question.ID, question.Statement, question.Answer, question.User, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_name FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND (("questions"."id" = 1)) ORDER BY "questions"."id" ASC LIMIT 1`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_id FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND (("questions"."id" = 1)) ORDER BY "questions"."id" ASC LIMIT 1`)).
 		WillReturnRows(rows)
 
 	mock.ExpectBegin()
@@ -109,7 +110,7 @@ func TestUpdate(t *testing.T) {
 	}
 	req = mux.SetURLVars(req, vars)
 
-	qc.Update(w, req)
+	qc.Update(w, req, *question.User)
 
 	result := w.Result()
 
@@ -130,7 +131,7 @@ func TestDelete(t *testing.T) {
 		ID:        1,
 		Statement: "what is the best ORM in goLang",
 		Answer:    "gORM is the best!",
-		UserName:  "Marcus",
+		User:      &model.User{ID: 1},
 	}
 
 	qc, mock, err := getQuestionController()
@@ -141,10 +142,10 @@ func TestDelete(t *testing.T) {
 	defer qc.Repository.Db.Close()
 
 	rows := sqlmock.
-		NewRows([]string{"id", "statement", "answer", "user_name", "created_at", "updated_at", "deleted_at"}).
-		AddRow(question.ID, question.Statement, question.Answer, question.UserName, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
+		NewRows([]string{"id", "statement", "answer", "user_id", "created_at", "updated_at", "deleted_at"}).
+		AddRow(question.ID, question.Statement, question.Answer, question.User, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_name FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND (("questions"."id" = 1)) ORDER BY "questions"."id" ASC LIMIT 1`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_id FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND (("questions"."id" = 1)) ORDER BY "questions"."id" ASC LIMIT 1`)).
 		WillReturnRows(rows)
 
 	mock.ExpectBegin()
@@ -165,7 +166,7 @@ func TestDelete(t *testing.T) {
 	}
 	req = mux.SetURLVars(req, vars)
 
-	qc.Delete(w, req)
+	qc.Delete(w, req, *question.User)
 
 	result := w.Result()
 
@@ -183,7 +184,7 @@ func TestGetById(t *testing.T) {
 		ID:        1,
 		Statement: "what is the best ORM in goLang",
 		Answer:    "gORM is the best!",
-		UserName:  "Marcus",
+		User:      &model.User{ID: 1},
 		UpdatedAt: &now,
 	}
 
@@ -195,10 +196,10 @@ func TestGetById(t *testing.T) {
 	defer qc.Repository.Db.Close()
 
 	rows := sqlmock.
-		NewRows([]string{"id", "statement", "answer", "user_name", "created_at", "updated_at", "deleted_at"}).
-		AddRow(question.ID, question.Statement, question.Answer, question.UserName, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
+		NewRows([]string{"id", "statement", "answer", "user_id", "created_at", "updated_at", "deleted_at"}).
+		AddRow(question.ID, question.Statement, question.Answer, question.User, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_name FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND (("questions"."id" = 1)) ORDER BY "questions"."id" ASC LIMIT 1`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_id FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND (("questions"."id" = 1)) ORDER BY "questions"."id" ASC LIMIT 1`)).
 		WillReturnRows(rows)
 
 	req := httptest.NewRequest(http.MethodGet, "/question", nil)
@@ -219,7 +220,7 @@ func TestGetById(t *testing.T) {
 
 	json.NewDecoder(result.Body).Decode(&newQuestion)
 
-	if question.Statement != newQuestion.Statement || question.Answer != newQuestion.Answer || question.UserName != newQuestion.UserName || question.ID != newQuestion.ID {
+	if question.Statement != newQuestion.Statement || question.Answer != newQuestion.Answer || question.User.ID != newQuestion.User.ID || question.ID != newQuestion.ID {
 		t.Errorf("expected body: %v, got: %v", question, newQuestion)
 	}
 
@@ -235,7 +236,7 @@ func TestGetByUser(t *testing.T) {
 		ID:        1,
 		Statement: "what is the best ORM in goLang",
 		Answer:    "gORM is the best!",
-		UserName:  "Marcus",
+		User:      &model.User{ID: 1},
 		UpdatedAt: &now,
 	}
 
@@ -247,18 +248,18 @@ func TestGetByUser(t *testing.T) {
 	defer qc.Repository.Db.Close()
 
 	rows := sqlmock.
-		NewRows([]string{"id", "statement", "answer", "user_name", "created_at", "updated_at", "deleted_at"}).
-		AddRow(question.ID, question.Statement, question.Answer, question.UserName, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
+		NewRows([]string{"id", "statement", "answer", "user_id", "created_at", "updated_at", "deleted_at"}).
+		AddRow(question.ID, question.Statement, question.Answer, question.User, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_name FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND ((user_name = $1))`)).
-		WithArgs(question.UserName).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_id FROM "questions"  WHERE "questions"."deleted_at" IS NULL AND ((user_id = $1))`)).
+		WithArgs(question.User.ID).
 		WillReturnRows(rows)
 
 	req := httptest.NewRequest(http.MethodGet, "/question", nil)
 	w := httptest.NewRecorder()
 
 	values := req.URL.Query()
-	values.Add("user", question.UserName)
+	values.Add("user", strconv.FormatUint(uint64(question.User.ID), 10))
 	req.URL.RawQuery = values.Encode()
 
 	qc.Get(w, req)
@@ -271,7 +272,7 @@ func TestGetByUser(t *testing.T) {
 
 	json.NewDecoder(result.Body).Decode(&questions)
 
-	if question.Statement != questions[0].Statement || question.Answer != questions[0].Answer || question.UserName != questions[0].UserName || question.ID != questions[0].ID {
+	if question.Statement != questions[0].Statement || question.Answer != questions[0].Answer || question.User.ID != questions[0].User.ID || question.ID != questions[0].ID {
 		t.Errorf("expected body: %v, got: %v", question, questions)
 	}
 
@@ -287,7 +288,7 @@ func TestGetAll(t *testing.T) {
 		ID:        1,
 		Statement: "what is the best ORM in goLang",
 		Answer:    "gORM is the best!",
-		UserName:  "Marcus",
+		User:      &model.User{ID: 1},
 		UpdatedAt: &now,
 	}
 
@@ -299,10 +300,10 @@ func TestGetAll(t *testing.T) {
 	defer qc.Repository.Db.Close()
 
 	rows := sqlmock.
-		NewRows([]string{"id", "statement", "answer", "user_name", "created_at", "updated_at", "deleted_at"}).
-		AddRow(question.ID, question.Statement, question.Answer, question.UserName, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
+		NewRows([]string{"id", "statement", "answer", "user_id", "created_at", "updated_at", "deleted_at"}).
+		AddRow(question.ID, question.Statement, question.Answer, question.User.ID, question.CreatedAt, question.UpdatedAt, question.DeletedAt)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_name FROM "questions"  WHERE "questions"."deleted_at" IS NULL`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, statement, answer, user_id FROM "questions"  WHERE "questions"."deleted_at" IS NULL`)).
 		WillReturnRows(rows)
 
 	req := httptest.NewRequest(http.MethodGet, "/question", nil)
@@ -318,7 +319,7 @@ func TestGetAll(t *testing.T) {
 
 	json.NewDecoder(result.Body).Decode(&questions)
 
-	if question.Statement != questions[0].Statement || question.Answer != questions[0].Answer || question.UserName != questions[0].UserName || question.ID != questions[0].ID {
+	if question.Statement != questions[0].Statement || question.Answer != questions[0].Answer || question.User.ID != questions[0].User.ID || question.ID != questions[0].ID {
 		t.Errorf("expected body: %v, got: %v", question, questions)
 	}
 
@@ -328,7 +329,7 @@ func TestGetAll(t *testing.T) {
 
 }
 
-func getQuestionController() (*question_controller.QuestionController, sqlmock.Sqlmock, error) {
+func getQuestionController() (*controller.QuestionController, sqlmock.Sqlmock, error) {
 	db, mock, err := sqlmock.New()
 
 	if err != nil {
@@ -342,5 +343,5 @@ func getQuestionController() (*question_controller.QuestionController, sqlmock.S
 	}
 
 	rep := &repository.QuestionRepository{Db: gdb}
-	return &question_controller.QuestionController{Repository: rep}, mock, nil
+	return &controller.QuestionController{Repository: rep}, mock, nil
 }

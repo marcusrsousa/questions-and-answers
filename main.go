@@ -2,9 +2,10 @@ package main
 
 import (
 	"level7/questions-and-answers/connection"
-	question_controller "level7/questions-and-answers/controller"
+	"level7/questions-and-answers/controller"
 	"level7/questions-and-answers/model"
 	"level7/questions-and-answers/repository"
+	"level7/questions-and-answers/utils"
 	"net/http"
 
 	"github.com/gorilla/handlers"
@@ -14,22 +15,26 @@ import (
 
 func addRoutes(r *mux.Router, db *gorm.DB) {
 
-	qc := getQuestionController(db)
+	qc, lc := getControllers(db)
 
-	r.HandleFunc("/question", qc.Add).Methods(http.MethodPost)
-	r.HandleFunc("/question/{id}", qc.Update).Methods(http.MethodPut)
-	r.HandleFunc("/question/{id}", qc.Delete).Methods(http.MethodDelete)
-	r.HandleFunc("/question/{id}", qc.Get).Methods(http.MethodGet)
+	r.HandleFunc("/question", utils.IsAuthorized(qc.Add, lc.Repository)).Methods(http.MethodPost)
+	r.HandleFunc("/question/{id}", utils.IsAuthorized(qc.Update, lc.Repository)).Methods(http.MethodPut)
+	r.HandleFunc("/question/{id}", utils.IsAuthorized(qc.Delete, lc.Repository)).Methods(http.MethodDelete)
+	r.HandleFunc("/question/{id}", utils.IsAuthorized(qc.GetById, lc.Repository)).Methods(http.MethodGet)
 	r.HandleFunc("/question", qc.Get).Methods(http.MethodGet)
+	r.HandleFunc("/login", lc.Login).Methods(http.MethodPost)
+	r.HandleFunc("/signup", lc.SignUp).Methods(http.MethodPost)
 
 }
 
-func getQuestionController(db *gorm.DB) *question_controller.QuestionController {
-	rep := &repository.QuestionRepository{Db: db}
-	return &question_controller.QuestionController{Repository: rep}
+func getControllers(db *gorm.DB) (*controller.QuestionController, *controller.LoginController) {
+	questionsRep := &repository.QuestionRepository{Db: db}
+	usersRep := &repository.UserRepository{Db: db}
+	return &controller.QuestionController{Repository: questionsRep}, &controller.LoginController{Repository: usersRep}
 }
 
 func initialMigration(db *gorm.DB) {
+	db.AutoMigrate(&model.User{})
 	db.AutoMigrate(&model.Question{})
 }
 
