@@ -10,7 +10,7 @@ type QuestionRepository struct {
 	Db *gorm.DB
 }
 
-var publicFields = []string{"id", "statement", "answer", "user_id"}
+var publicFields = []string{"id", "statement", "answer"}
 
 func (qr *QuestionRepository) Insert(q *model.Question) {
 	qr.Db.Create(q)
@@ -26,7 +26,9 @@ func (qr *QuestionRepository) Delete(q *model.Question) {
 
 func (qr *QuestionRepository) FindAll() *[]model.Question {
 	questions := &[]model.Question{}
-	qr.Db.Select(publicFields).Find(questions)
+	qr.Db.Preload("User", func(tx *gorm.DB) *gorm.DB {
+		return tx.Select([]string{"id", "name"})
+	}).Find(questions)
 	return questions
 }
 

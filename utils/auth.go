@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var mySigningKey = []byte("5G$w7vz:>s`SyaU;$P/Y`:9A$v[9a8")
@@ -39,7 +40,7 @@ func GenerateJWT(user model.User) (string, error) {
 func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request, model.User), userRepository *repository.UserRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		if r.Header["Token"] == nil {
+		if r.Header["Authorization"] == nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			fmt.Fprint(w, "Not Authorized")
 			return
@@ -47,7 +48,7 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request, model.User),
 
 		claims := &Claims{}
 
-		token, err := jwt.ParseWithClaims(r.Header["Token"][0], claims, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(r.Header["Authorization"][0], claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("error on token method")
 			}
@@ -74,4 +75,18 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request, model.User),
 		endpoint(w, r, *user)
 
 	}
+}
+
+func EncryptPassword(password string) string {
+	encPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+
+	if err != nil {
+		return ""
+	}
+
+	return string(encPassword)
+}
+
+func IsSamePasswords(hash, password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }

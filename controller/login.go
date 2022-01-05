@@ -16,12 +16,25 @@ type LoginController struct {
 
 func (lc *LoginController) Login(w http.ResponseWriter, req *http.Request) {
 	userRequest := getUserFromBody(req)
-	user := lc.Repository.Login(userRequest.Login, userRequest.Password)
+
+	if userRequest.Login == "" || userRequest.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := lc.Repository.Login(userRequest.Login)
 
 	if user.ID == 0 {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+
+	if !utils.IsSamePasswords(user.Password, userRequest.Password) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	user.Password = ""
 
 	token, err := utils.GenerateJWT(*user)
 
@@ -36,6 +49,24 @@ func (lc *LoginController) Login(w http.ResponseWriter, req *http.Request) {
 }
 
 func (lc *LoginController) SignUp(w http.ResponseWriter, req *http.Request) {
+	userRequest := getUserFromBody(req)
+
+	if userRequest.Name == "" || userRequest.Login == "" || userRequest.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	userRequest.Password = utils.EncryptPassword(userRequest.Password)
+
+	user := lc.Repository.Login(userRequest.Login)
+
+	if user.ID != 0 {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	lc.Repository.Insert(userRequest)
+
 }
 
 func getUserFromBody(req *http.Request) *model.User {

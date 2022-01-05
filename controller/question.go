@@ -33,7 +33,7 @@ func (qc *QuestionController) Add(w http.ResponseWriter, req *http.Request, curr
 
 func (qc *QuestionController) Update(w http.ResponseWriter, req *http.Request, currentUser model.User) {
 
-	id, err := getUintField(req, "id")
+	id, err := getUintField(mux.Vars(req)["id"])
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -69,7 +69,7 @@ func (qc *QuestionController) Update(w http.ResponseWriter, req *http.Request, c
 
 func (qc *QuestionController) Delete(w http.ResponseWriter, req *http.Request, currentUser model.User) {
 
-	id, err := getUintField(req, "id")
+	id, err := getUintField(mux.Vars(req)["id"])
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -91,7 +91,7 @@ func (qc *QuestionController) Delete(w http.ResponseWriter, req *http.Request, c
 
 func (qc *QuestionController) GetById(w http.ResponseWriter, req *http.Request, currentUser model.User) {
 
-	id, errId := getUintField(req, "id")
+	id, errId := getUintField(mux.Vars(req)["id"])
 
 	if errId != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -110,9 +110,9 @@ func (qc *QuestionController) GetById(w http.ResponseWriter, req *http.Request, 
 
 func (qc *QuestionController) Get(w http.ResponseWriter, req *http.Request) {
 
-	user, errUser := getUintField(req, "user_id")
+	user, err := getUintField(req.URL.Query().Get("user_id"))
 
-	if errUser != nil {
+	if err != nil {
 		writeResponse(&w, http.StatusOK, qc.Repository.FindAll())
 		return
 	}
@@ -133,8 +133,8 @@ func getQuestionFromBody(req *http.Request) *model.Question {
 	return question
 }
 
-func getUintField(req *http.Request, field string) (uint, error) {
-	id64, err := strconv.ParseUint(mux.Vars(req)[field], 10, 64)
+func getUintField(field string) (uint, error) {
+	id64, err := strconv.ParseUint(field, 10, 64)
 	if err != nil {
 		return 0, err
 	}
