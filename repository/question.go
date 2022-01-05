@@ -10,7 +10,7 @@ type QuestionRepository struct {
 	Db *gorm.DB
 }
 
-var publicFields = []string{"id", "statement", "answer"}
+var publicFields = []string{"id", "statement", "answer", "user_id"}
 
 func (qr *QuestionRepository) Insert(q *model.Question) {
 	qr.Db.Create(q)

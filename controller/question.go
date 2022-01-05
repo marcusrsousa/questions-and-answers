@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -95,6 +96,7 @@ func (qc *QuestionController) GetById(w http.ResponseWriter, req *http.Request, 
 
 	if errId != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, errId)
 		return
 	}
 
@@ -102,6 +104,7 @@ func (qc *QuestionController) GetById(w http.ResponseWriter, req *http.Request, 
 
 	if question.ID == 0 || question.UserID != currentUser.ID {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Question not found to this user")
 		return
 	}
 	writeResponse(&w, http.StatusOK, question)
