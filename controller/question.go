@@ -10,6 +10,7 @@ import (
 
 	"level7/questions-and-answers/model"
 	"level7/questions-and-answers/repository"
+	"level7/questions-and-answers/utils/pagination"
 
 	"github.com/gorilla/mux"
 )
@@ -115,12 +116,14 @@ func (qc *QuestionController) Get(w http.ResponseWriter, req *http.Request) {
 
 	user, err := getUintField(req.URL.Query().Get("user_id"))
 
+	page := pagination.CreatePage(req.URL.Query())
+
 	if err != nil {
-		writeResponse(&w, http.StatusOK, qc.Repository.FindAll())
+		writeResponse(&w, http.StatusOK, qc.Repository.FindAll(page))
 		return
 	}
 
-	writeResponse(&w, http.StatusOK, qc.Repository.FindByUser(user))
+	writeResponse(&w, http.StatusOK, qc.Repository.FindByUser(user, page))
 
 }
 

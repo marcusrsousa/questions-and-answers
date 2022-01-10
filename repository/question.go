@@ -2,6 +2,7 @@ package repository
 
 import (
 	"level7/questions-and-answers/model"
+	"level7/questions-and-answers/utils/pagination"
 
 	"github.com/jinzhu/gorm"
 )
@@ -24,22 +25,27 @@ func (qr *QuestionRepository) Delete(q *model.Question) {
 	qr.Db.Delete(q)
 }
 
-func (qr *QuestionRepository) FindAll() *[]model.Question {
+func (qr *QuestionRepository) FindAll(page *pagination.Page) pagination.Pagination {
 	questions := &[]model.Question{}
 	qr.Db.Preload("User", func(tx *gorm.DB) *gorm.DB {
 		return tx.Select([]string{"id", "name"})
-	}).Find(questions)
-	return questions
+	}).Limit(page.GetLimit()).Offset(page.GetOffset()).Find(questions)
+
+	var count uint64
+	qr.Db.Model(&model.Question{}).Count(&count)
+	return *pagination.CreatePagination(*page, questions, count)
 }
 
 func (qr *QuestionRepository) FindById(id uint) *model.Question {
 	return findById(id, qr.Db)
 }
 
-func (qr *QuestionRepository) FindByUser(userId uint) *[]model.Question {
+func (qr *QuestionRepository) FindByUser(userId uint, page *pagination.Page) pagination.Pagination {
 	questions := &[]model.Question{}
-	qr.Db.Select(publicFields).Find(questions, "user_id = ?", userId)
-	return questions
+	qr.Db.Select(publicFields).Limit(page.GetLimit()).Offset(page.GetOffset()).Find(questions, "user_id = ?", userId)
+	var count uint64
+	qr.Db.Model(&model.Question{}).Where("user_id = ?", userId).Count(&count)
+	return *pagination.CreatePagination(*page, questions, count)
 }
 
 func findById(id uint, db *gorm.DB) *model.Question {

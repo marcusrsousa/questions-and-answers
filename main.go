@@ -47,6 +47,7 @@ func getCors() []handlers.CORSOption {
 
 func main() {
 	db := connection.GetConnection()
+	db.LogMode(true)
 	initialMigration(db)
 	r := mux.NewRouter()
 	addRoutes(r, db)
