@@ -7,7 +7,7 @@ import (
 type Question struct {
 	ID        uint       `gorm:"primary_key" json:"id,omitempty"`
 	Statement string     `json:"statement,omitempty"`
-	Answer    string     `json:"answer,omitempty"`
+	Answers   []Answer   `json:"answers,omitempty"`
 	UserID    uint       `json:"user_id,omitempty"`
 	User      *User      `json:"user,omitempty"`
 	CreatedAt *time.Time `json:"created_at,omitempty"`

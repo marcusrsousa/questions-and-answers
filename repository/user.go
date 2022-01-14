@@ -14,6 +14,10 @@ func (ur *UserRepository) Insert(u *model.User) {
 	ur.Db.Create(u)
 }
 
+func (ur *UserRepository) Update(user *model.User, u *model.User) {
+	ur.Db.Model(user).Updates(u)
+}
+
 func (ur *UserRepository) FindById(id uint) *model.User {
 	return findUserById(id, ur.Db)
 }

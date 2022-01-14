@@ -65,7 +65,40 @@ func (lc *LoginController) SignUp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	lc.Repository.Insert(userRequest)
+	lc.Repository.Update(userRequest, user)
+
+}
+
+func (lc *LoginController) ChangePassword(w http.ResponseWriter, req *http.Request, currentUser model.User) {
+	passwords := &model.Password{}
+	b, err := ioutil.ReadAll(req.Body)
+
+	if err != nil {
+		log.Fatalln("Error reading body:", err)
+	}
+	json.Unmarshal(b, passwords)
+
+	if passwords.CurrentPassword == "" || passwords.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := lc.Repository.Login(currentUser.Login)
+
+	if user.ID == 0 {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	if !utils.IsSamePasswords(user.Password, passwords.CurrentPassword) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	userRequest := *user
+	userRequest.Password = utils.EncryptPassword(passwords.Password)
+
+	lc.Repository.Update(user, &userRequest)
 
 }
 

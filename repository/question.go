@@ -11,14 +11,14 @@ type QuestionRepository struct {
 	Db *gorm.DB
 }
 
-var publicFields = []string{"id", "statement", "answer", "user_id"}
+var publicFields = []string{"id", "statement", "user_id"}
 
 func (qr *QuestionRepository) Insert(q *model.Question) {
 	qr.Db.Create(q)
 }
 
 func (qr *QuestionRepository) Update(question *model.Question, q *model.Question) {
-	qr.Db.Model(question).Select("Statement", "Answer", "UserID").Updates(q)
+	qr.Db.Model(question).Select("Statement", "UserID").Updates(q)
 }
 
 func (qr *QuestionRepository) Delete(q *model.Question) {

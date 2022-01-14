@@ -13,7 +13,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: questions-and-answers-server:1.5
+    image: questions-and-answers-server:1.6
     depends_on:
       - database
     ports:
